@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8">
+<style> /* set the CSS */
+
+
+rect {
+  fill: transparent;
+  shape-rendering: crispEdges;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.1);
+  shape-rendering: crispEdges;
+}
+
+.axisLine {
+  fill: none;
+  shape-rendering: crispEdges;
+  stroke: rgba(1, 0, 0, 0.5);
+  stroke-width: 3px;
+}
+
+.dot {
+  fill-opacity: .7;
+}
+
+.d3-tip {
+  line-height: 1;
+  font-weight: bold;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border-radius: 3px;
+}
+
+
+.d3-tip:after {
+  box-sizing: border-box;
+  display: inline;
+  font-size: 30px;
+  width: 100%;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.8);
+  content: "\25BC";
+  position: absolute;
+  text-align: center;
+}
+
+
+.d3-tip.n:after {
+  margin: -3px 0 0 0;
+  top: 100%;
+  left: 0;
+}
+
+</style>
+<body>
+  <div id="title">
+    Giles Runs 2016
+  </div>
+  <div id ="chart">
+  </div>
+  <div id = "filter">
+    MONTH:
+  </div>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script>
+var margin = {top: 10, right: 10, bottom: 50, left: 50},
+    width = 960 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
+
+var xValue = function(d) { return d.distance;},
+    xScale = d3.scale.linear().range([0, width]),
+    xMap = function(d) { return xScale(xValue(d));},
+    xAxis = d3.svg.axis().scale(xScale).orient("bottom");
+
+
+var yValue = function(d) { return d.pace;},
+    yScale = d3.scale.linear().range([height, 0]),
+    yMap = function(d) { return yScale(yValue(d));},
+    yAxis = d3.svg.axis().scale(yScale).orient("left");
+
+
+var cValue = function(d) { return d.Label;},
+    color = d3.scale.category10();
+var div = d3.select("#chart").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
+var svg = d3.select("#chart").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+var dropDown = d3.select("#filter").append("select")
+                    .attr("name", "Label-list");
+
+
+d3.csv("data_2.csv", function(data) {
+
+  data.forEach(function(d) {
+    d.distance = +d.distance;
+    d.pace = +d.pace;
+  });
+
+
+  xScale.domain([d3.min(data, xValue)-.09, d3.max(data, xValue)+.09]);
+  yScale.domain([d3.min(data, yValue)-.09, d3.max(data, yValue)+.09]);
+
+
+  svg.append("g")
+      .classed("x axis", true)
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis)
+    .append("text")
+      .classed("label", true)
+      .attr("x", width)
+      .attr("y", margin.bottom - 10)
+      .style("text-anchor", "end")
+      .text("DISTANCE (miles)");
+
+      svg.append("g")
+          .classed("y axis", true)
+          .call(yAxis)
+        .append("text")
+          .classed("label", true)
+          .attr("transform", "rotate(-90)")
+          .attr("y", -margin.left)
+          .attr("dy", ".71em")
+          .style("text-anchor", "end")
+          .text("PACE (miles/hour)");
+
+  svg.selectAll(".dot")
+      .data(data)
+    .enter().append("circle")
+      .attr("class", "dot")
+      .attr("r", 7)
+      .attr("cx", xMap)
+      .attr("cy", yMap)
+      .style("fill", function(d) { return color(cValue(d));})
+      .on("mouseover", function(d) {
+            div.transition()
+                .duration(50)
+                .style("opacity", .8);
+            div .html(d.pace + "  miles per hour" + "<br/>"  + d.distance + "  miles" + "<br/>" + "Month: " + d.Label)
+                .style("right", (d3.event.pageX) + "px")
+                .style("top", (d3.event.pageY - 0) + "px");
+            })
+      .on("mouseout", function(d) {
+            div.transition()
+                .duration(500)
+                .style("opacity", 0);
+        });
+
+  var legend = svg.selectAll(".legend")
+      .data(color.domain())
+    .enter().append("g")
+      .attr("class", "legend")
+      .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+  legend.append("rect")
+      .attr("x", width - 15)
+      .attr("width", 15)
+      .attr("height", 15)
+      .style("fill", color)
+      .style("opacity", .5);
+
+  legend.append("text")
+      .attr("x", width - 24)
+      .attr("y", 9)
+      .attr("dy", ".35em")
+      .style("text-anchor", "end")
+      .text(function(d) { return d;})
+
+
+
+var labels = ["All", "january", "february", "march", "april", "may", "june", "july", "august"]
+
+var options = dropDown.selectAll("option")
+           .data(labels)
+         .enter()
+           .append("option");
+
+options.text(function (d) { return d; })
+       .attr("value", function (d) { return d; });
+
+  dropDown.on("change", function() {
+      var selected = this.value;
+      displayOthers = this.checked ? "inline" : "none";
+      display = this.checked ? "none" : "inline";
+
+      if(selected == 'All'){
+        svg.selectAll(".dot")
+            .attr("display", display);
+      }
+      else{
+      svg.selectAll(".dot")
+          .filter(function(d) {return selected != d.Label;})
+          .attr("display", displayOthers);
+
+      svg.selectAll(".dot")
+          .filter(function(d) {return selected == d.Label;})
+          .attr("display", display);
+
+// I referenced code from the following examples and tut  orials in putting this together:
+// https://cran.r-project.org/web/packages/scatterD3/vignettes/introduction.html
+// http://bl.ocks.org/weiglemc/6185069
+// http://bl.ocks.org/weiglemc/6185069
+// https://cran.r-project.org/web/packages/scatterD3/vignettes/introduction.html
+// https://plot.ly/javascript/dropdowns/
+
+      }
+      });
+});
+</script>
+</body>
+</html>
